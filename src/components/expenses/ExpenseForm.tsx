@@ -20,9 +20,11 @@ import { Expense } from '@/app/page';
 interface ExpenseFormProps {
   onAdd: (expense: Omit<Expense, 'id'>) => void;
   initialData?: Expense | null;
+  user1Name?: string;
+  user2Name?: string;
 }
 
-export function ExpenseForm({ onAdd, initialData }: ExpenseFormProps) {
+export function ExpenseForm({ onAdd, initialData, user1Name = 'Marco', user2Name = 'Sara' }: ExpenseFormProps) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -55,7 +57,7 @@ export function ExpenseForm({ onAdd, initialData }: ExpenseFormProps) {
         setCategory(result.category);
       }
     } catch (error) {
-      // Error handling is managed centrally
+      // Error handling managed centrally
     } finally {
       setIsCategorizing(false);
     }
@@ -183,11 +185,11 @@ export function ExpenseForm({ onAdd, initialData }: ExpenseFormProps) {
           <RadioGroup value={paidBy} onValueChange={setPaidBy} className="flex gap-4">
             <div className="flex items-center space-x-2 bg-muted p-3 rounded-lg flex-1 justify-center cursor-pointer hover:bg-primary/10 transition-colors">
               <RadioGroupItem value="u1" id="u1" />
-              <Label htmlFor="u1" className="cursor-pointer font-bold">Marco</Label>
+              <Label htmlFor="u1" className="cursor-pointer font-bold">{user1Name}</Label>
             </div>
             <div className="flex items-center space-x-2 bg-muted p-3 rounded-lg flex-1 justify-center cursor-pointer hover:bg-primary/10 transition-colors">
               <RadioGroupItem value="u2" id="u2" />
-              <Label htmlFor="u2" className="cursor-pointer font-bold">Sara</Label>
+              <Label htmlFor="u2" className="cursor-pointer font-bold">{user2Name}</Label>
             </div>
           </RadioGroup>
         </div>
