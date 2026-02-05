@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -15,7 +14,6 @@ import { automaticExpenseCategorization } from '@/ai/flows/automatic-expense-cat
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 import { Expense } from '@/app/page';
 
 interface ExpenseFormProps {
@@ -94,14 +92,14 @@ export function ExpenseForm({ onAdd, initialData, categories, user1Name = 'Marco
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="space-y-1.5">
-        <Label className="text-xs font-black uppercase text-muted-foreground ml-1">Descrizione</Label>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-2">
+        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Descrizione</Label>
         <div className="relative">
           <Input
-            placeholder="es. Cena fuori"
+            placeholder="es. Pizza e birra"
             value={description}
-            className="h-12 rounded-xl text-base border-muted"
+            className="h-16 rounded-[1.5rem] text-lg border-2 border-muted focus:border-primary px-6 shadow-sm"
             onChange={(e) => setDescription(e.target.value)}
             onBlur={() => { if (description.length > 3 && !categoryId) handleAutoCategorize(); }}
           />
@@ -109,59 +107,59 @@ export function ExpenseForm({ onAdd, initialData, categories, user1Name = 'Marco
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 text-primary"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:bg-primary/10 rounded-full h-10 w-10"
             onClick={handleAutoCategorize}
             disabled={isCategorizing || !description}
           >
-            {isCategorizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {isCategorizing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-black uppercase text-muted-foreground ml-1">Quanto? (€)</Label>
+        <div className="space-y-2">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Quanto? (€)</Label>
           <Input
             type="number"
             step="0.01"
             placeholder="0.00"
-            className="h-12 rounded-xl text-lg font-black border-muted"
+            className="h-16 rounded-[1.5rem] text-2xl font-black border-2 border-muted focus:border-primary px-6 shadow-sm"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-black uppercase text-muted-foreground ml-1">Quando?</Label>
+        <div className="space-y-2">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Quando?</Label>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full h-12 rounded-xl justify-start font-bold border-muted">
-                <CalendarIcon className="mr-2 h-4 w-4" />
+              <Button variant="outline" className="w-full h-16 rounded-[1.5rem] justify-start font-black text-sm border-2 border-muted px-6 shadow-sm">
+                <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
                 {format(date, "dd/MM/yyyy")}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} />
+            <PopoverContent className="w-auto p-0 rounded-[2rem] border-none shadow-2xl" align="start">
+              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} className="rounded-[2rem]" />
             </PopoverContent>
           </Popover>
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label className="text-xs font-black uppercase text-muted-foreground ml-1">Categoria</Label>
+      <div className="space-y-2">
+        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Categoria</Label>
         <Select value={categoryId} onValueChange={setCategoryId}>
-          <SelectTrigger className="h-12 rounded-xl border-muted font-bold">
+          <SelectTrigger className="h-16 rounded-[1.5rem] border-2 border-muted px-6 font-black uppercase text-[10px] tracking-widest shadow-sm">
             <SelectValue placeholder="Scegli categoria" />
           </SelectTrigger>
-          <SelectContent className="rounded-xl">
+          <SelectContent className="rounded-[1.5rem] border-none shadow-2xl">
             {categories.map((cat) => {
               const IconComp = AVAILABLE_ICONS[cat.iconName as IconName] || AVAILABLE_ICONS['Layers'];
               return (
-                <SelectItem key={cat.id} value={cat.id}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-md flex items-center justify-center text-white" style={{ backgroundColor: cat.color }}>
-                      <IconComp className="w-3.5 h-3.5" />
+                <SelectItem key={cat.id} value={cat.id} className="rounded-xl my-1">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md" style={{ backgroundColor: cat.color }}>
+                      <IconComp className="w-4 h-4" />
                     </div>
-                    {cat.name}
+                    <span className="font-black uppercase tracking-widest text-[10px]">{cat.name}</span>
                   </div>
                 </SelectItem>
               );
@@ -170,43 +168,51 @@ export function ExpenseForm({ onAdd, initialData, categories, user1Name = 'Marco
         </Select>
       </div>
 
-      <div className="space-y-4 pt-2">
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Chi ha pagato?</Label>
-          <RadioGroup value={paidBy} onValueChange={setPaidBy} className="flex gap-2">
+      <div className="space-y-6 pt-4">
+        <div className="space-y-3">
+          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-2">Chi ha pagato?</Label>
+          <RadioGroup value={paidBy} onValueChange={setPaidBy} className="flex gap-3">
             {[
               { id: 'u1', name: user1Name },
               { id: 'u2', name: user2Name }
             ].map(u => (
-              <div key={u.id} className={`flex items-center space-x-2 bg-muted/40 p-3 rounded-xl flex-1 justify-center cursor-pointer border-2 transition-all ${paidBy === u.id ? 'border-primary bg-primary/5' : 'border-transparent'}`} onClick={() => setPaidBy(u.id)}>
+              <div 
+                key={u.id} 
+                className={`flex items-center space-x-2 p-4 rounded-2xl flex-1 justify-center cursor-pointer border-2 transition-all shadow-sm ${paidBy === u.id ? 'border-primary bg-primary/5 text-primary' : 'border-muted bg-white text-muted-foreground'}`} 
+                onClick={() => setPaidBy(u.id)}
+              >
                 <RadioGroupItem value={u.id} id={u.id} className="hidden" />
-                <Label htmlFor={u.id} className="cursor-pointer font-black text-xs uppercase">{u.name}</Label>
+                <Label htmlFor={u.id} className="cursor-pointer font-black text-xs uppercase tracking-widest">{u.name}</Label>
               </div>
             ))}
           </RadioGroup>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Come dividiamo?</Label>
-          <RadioGroup value={splitType} onValueChange={(val: any) => setSplitType(val)} className="grid grid-cols-1 gap-1.5">
+        <div className="space-y-3">
+          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-2">Come dividiamo?</Label>
+          <RadioGroup value={splitType} onValueChange={(val: any) => setSplitType(val)} className="grid grid-cols-1 gap-2">
             {[
               { id: 'split', icon: Users, label: 'Divisa (50/50)' },
               { id: 'personal', icon: UserCheck, label: 'Solo per me' },
               { id: 'for_other', icon: User, label: 'Tutto per l\'altro' }
             ].map(type => (
-              <div key={type.id} className={`flex items-center space-x-3 bg-muted/40 p-3 rounded-xl cursor-pointer border-2 transition-all ${splitType === type.id ? 'border-primary bg-primary/5' : 'border-transparent'}`} onClick={() => setSplitType(type.id as any)}>
+              <div 
+                key={type.id} 
+                className={`flex items-center space-x-4 p-4 rounded-2xl cursor-pointer border-2 transition-all shadow-sm ${splitType === type.id ? 'border-primary bg-primary/5 text-primary' : 'border-muted bg-white text-muted-foreground'}`} 
+                onClick={() => setSplitType(type.id as any)}
+              >
                 <RadioGroupItem value={type.id} id={type.id} className="hidden" />
-                <type.icon className={`w-5 h-5 ${splitType === type.id ? 'text-primary' : 'text-muted-foreground'}`} />
-                <Label htmlFor={type.id} className="cursor-pointer font-bold text-sm flex-1">{type.label}</Label>
+                <type.icon className={`w-6 h-6 ${splitType === type.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                <Label htmlFor={type.id} className="cursor-pointer font-black text-xs uppercase tracking-widest flex-1">{type.label}</Label>
               </div>
             ))}
           </RadioGroup>
         </div>
       </div>
 
-      <Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-lg hover:shadow-xl transition-all">
-        {initialData ? <Save className="mr-2" /> : <Plus className="mr-2 h-6 w-6" />}
-        {initialData ? 'AGGIORNA SPESA' : 'SALVA SPESA'}
+      <Button type="submit" className="w-full h-18 rounded-[2rem] font-black text-xl shadow-2xl bg-primary hover:bg-primary/90 transition-all active:scale-95">
+        {initialData ? <Save className="mr-3 h-6 w-6" /> : <Plus className="mr-3 h-8 w-8" />}
+        {initialData ? 'AGGIORNA' : 'AGGIUNGI'}
       </Button>
     </form>
   );
