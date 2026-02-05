@@ -1,70 +1,90 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { ExpenseForm } from '@/components/expenses/ExpenseForm';
 import { BudgetOverview } from '@/components/budget/BudgetOverview';
 import { SpendingChart } from '@/components/reports/SpendingChart';
-import { SubscriptionList } from '@/components/subscriptions/SubscriptionList';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
   Wallet, 
   PieChart, 
   LayoutDashboard, 
   Settings, 
-  ListTodo, 
+  Users, 
   LogOut, 
   Menu,
   TrendingUp,
   CreditCard,
   ArrowUpRight,
   ArrowDownRight,
-  PlusCircle
+  ArrowRightLeft,
+  User
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+
+const USERS = [
+  { id: 'u1', name: 'Marco' },
+  { id: 'u2', name: 'Sara' }
+];
 
 const INITIAL_EXPENSES = [
-  { description: 'Netflix Subscription', amount: 15.99, category: 'Subscriptions', date: new Date().toISOString() },
-  { description: 'Supermarket shopping', amount: 85.50, category: 'Food & Dining', date: new Date(Date.now() - 86400000).toISOString() },
-  { description: 'Uber ride', amount: 22.00, category: 'Transportation', date: new Date(Date.now() - 172800000).toISOString() },
-  { description: 'Dinner out', amount: 45.00, category: 'Food & Dining', date: new Date(Date.now() - 259200000).toISOString() },
-];
-
-const INITIAL_BUDGETS = [
-  { category: 'Food & Dining', limit: 500, spent: 130.50 },
-  { category: 'Transportation', limit: 200, spent: 22.00 },
-  { category: 'Entertainment', limit: 150, spent: 0 },
-  { category: 'Shopping', limit: 300, spent: 0 },
-  { category: 'Subscriptions', limit: 100, spent: 15.99 },
-];
-
-const INITIAL_SUBSCRIPTIONS = [
-  { id: '1', name: 'Netflix', amount: 15.99, renewalDate: '2024-04-15' },
-  { id: '2', name: 'Spotify', amount: 9.99, renewalDate: '2024-04-01' },
-  { id: '3', name: 'iCloud+', amount: 0.99, renewalDate: '2024-04-25' },
+  { 
+    description: 'Cena Pizzeria', 
+    amount: 40.00, 
+    category: 'Svago & Ristoranti', 
+    date: new Date().toISOString(),
+    paidBy: 'u1',
+    splitType: 'split' // 'split', 'personal', 'for_other'
+  },
+  { 
+    description: 'Spesa Esselunga', 
+    amount: 60.50, 
+    category: 'Spesa Alimentare', 
+    date: new Date(Date.now() - 86400000).toISOString(),
+    paidBy: 'u2',
+    splitType: 'split'
+  },
 ];
 
 export default function SpeseJournal() {
   const [expenses, setExpenses] = useState(INITIAL_EXPENSES);
-  const [budgets, setBudgets] = useState(INITIAL_BUDGETS);
-  const [subscriptions] = useState(INITIAL_SUBSCRIPTIONS);
   const [mounted, setMounted] = useState(false);
 
-  // Avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const addExpense = (newExpense: any) => {
     setExpenses(prev => [newExpense, ...prev]);
-    setBudgets(prev => prev.map(b => 
-      b.category === newExpense.category 
-        ? { ...b, spent: b.spent + newExpense.amount } 
-        : b
-    ));
   };
+
+  // Calcolo Bilancio (Chi deve a chi)
+  const balances = useMemo(() => {
+    let u1OwesU2 = 0;
+    let u2OwesU1 = 0;
+
+    expenses.forEach(exp => {
+      if (exp.splitType === 'split') {
+        const half = exp.amount / 2;
+        if (exp.paidBy === 'u1') u2OwesU1 += half;
+        else u1OwesU2 += half;
+      } else if (exp.splitType === 'for_other') {
+        if (exp.paidBy === 'u1') u2OwesU1 += exp.amount;
+        else u1OwesU2 += exp.amount;
+      }
+      // 'personal' non influisce sul debito
+    });
+
+    const diff = u2OwesU1 - u1OwesU2;
+    return {
+      diff,
+      u1OwesU2: diff < 0 ? Math.abs(diff) : 0,
+      u2OwesU1: diff > 0 ? diff : 0
+    };
+  }, [expenses]);
 
   const chartData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -78,7 +98,6 @@ export default function SpeseJournal() {
   }, [expenses]);
 
   const totalSpentMonth = useMemo(() => expenses.reduce((acc, curr) => acc + curr.amount, 0), [expenses]);
-  const dailyAverage = mounted ? (totalSpentMonth / 30).toFixed(2) : "0.00";
 
   if (!mounted) return null;
 
@@ -86,9 +105,9 @@ export default function SpeseJournal() {
     <div className="flex flex-col h-full py-6 px-4 space-y-8">
       <div className="flex items-center gap-2 px-2">
         <div className="p-2 bg-primary rounded-lg text-white">
-          <Wallet className="w-6 h-6" />
+          <Users className="w-6 h-6" />
         </div>
-        <h1 className="text-xl font-bold text-primary">SpeseJournal</h1>
+        <h1 className="text-xl font-bold text-primary">NoiDue Spese</h1>
       </div>
       
       <nav className="flex-1 space-y-2">
@@ -96,10 +115,10 @@ export default function SpeseJournal() {
           <LayoutDashboard className="w-5 h-5" /> Dashboard
         </button>
         <button className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-muted-foreground hover:bg-muted transition-colors text-left">
-          <ListTodo className="w-5 h-5" /> Transazioni
+          <ArrowRightLeft className="w-5 h-5" /> Bilancio Gruppo
         </button>
         <button className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-muted-foreground hover:bg-muted transition-colors text-left">
-          <PieChart className="w-5 h-5" /> Report
+          <PieChart className="w-5 h-5" /> Statistiche
         </button>
         <button className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-muted-foreground hover:bg-muted transition-colors text-left">
           <Settings className="w-5 h-5" /> Impostazioni
@@ -108,7 +127,7 @@ export default function SpeseJournal() {
 
       <div className="pt-8 border-t px-2">
         <button className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-destructive hover:bg-destructive/5 transition-colors text-left">
-          <LogOut className="w-5 h-5" /> Logout
+          <LogOut className="w-5 h-5" /> Esci
         </button>
       </div>
     </div>
@@ -124,9 +143,9 @@ export default function SpeseJournal() {
         <header className="md:hidden flex justify-between items-center pb-4 border-b">
           <div className="flex items-center gap-2">
              <div className="p-1.5 bg-primary rounded text-white">
-               <Wallet className="w-5 h-5" />
+               <Users className="w-5 h-5" />
              </div>
-             <h1 className="text-lg font-bold text-primary">SpeseJournal</h1>
+             <h1 className="text-lg font-bold text-primary">NoiDue</h1>
           </div>
           <Sheet>
             <SheetTrigger asChild>
@@ -140,127 +159,121 @@ export default function SpeseJournal() {
           </Sheet>
         </header>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">Bentornato, Marco</h2>
-            <p className="text-muted-foreground">Ecco il riepilogo delle tue finanze per questo mese.</p>
-          </div>
-          <div className="flex gap-2">
-             <Button variant="outline" className="hidden sm:flex gap-2">
-               <TrendingUp className="w-4 h-4" /> Export Report
-             </Button>
-          </div>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-2xl font-bold text-foreground">Ciao, Team</h2>
+          <p className="text-muted-foreground">Ecco come vanno le vostre spese condivise.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-primary text-primary-foreground shadow-lg border-none">
+        {/* Sezione Bilancio Tricount Style */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className={`col-span-1 md:col-span-2 border-none shadow-lg ${balances.u2OwesU1 > 0 ? 'bg-green-50' : balances.u1OwesU2 > 0 ? 'bg-red-50' : 'bg-primary'}`}>
             <CardContent className="pt-6">
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
                 <div>
-                  <p className="text-primary-foreground/70 text-sm font-medium">Uscite Mensili</p>
-                  <p className="text-2xl font-bold">€{totalSpentMonth.toFixed(2)}</p>
+                  <p className="text-sm font-medium opacity-70">Bilancio di Gruppo</p>
+                  <h3 className="text-3xl font-bold">
+                    {balances.diff === 0 ? "Siete in pari!" : 
+                     balances.u2OwesU1 > 0 ? `Sara deve a Marco €${balances.u2OwesU1.toFixed(2)}` : 
+                     `Marco deve a Sara €${balances.u1OwesU2.toFixed(2)}`}
+                  </h3>
                 </div>
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <CreditCard className="w-5 h-5 text-white" />
+                <div className="p-4 bg-white/20 rounded-full">
+                  <ArrowRightLeft className="w-8 h-8 text-primary" />
                 </div>
-              </div>
-              <div className="mt-4 flex items-center gap-1 text-xs">
-                <span className="flex items-center text-green-300 font-bold">
-                  <ArrowDownRight className="w-3 h-3 mr-1" /> 8%
-                </span>
-                <span className="opacity-70 font-medium">vs mese scorso</span>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="shadow-md border-none">
+          <Card className="shadow-md border-none flex flex-col justify-center">
             <CardContent className="pt-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-muted-foreground text-sm font-medium">Media al Giorno</p>
-                  <p className="text-2xl font-bold text-foreground">€{dailyAverage}</p>
-                </div>
-                <div className="p-2 bg-accent rounded-lg text-primary">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center gap-1 text-xs">
-                <span className="flex items-center text-primary font-bold">
-                  <ArrowUpRight className="w-3 h-3 mr-1" /> €2.40
-                </span>
-                <span className="text-muted-foreground font-medium">sopra il target</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="hidden lg:block lg:col-span-2 overflow-hidden relative shadow-md border-none">
-            <CardContent className="pt-6">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="font-bold text-foreground">Risparmio Obbiettivo</h4>
-                <span className="text-xs font-bold px-2 py-1 bg-green-100 text-green-700 rounded-full">In linea</span>
-              </div>
-              <div className="space-y-2">
-                 <div className="flex justify-between text-sm">
-                   <span className="text-muted-foreground font-medium">€1.250 / €1.500</span>
-                   <span className="font-bold text-primary">83%</span>
-                 </div>
-                 <div className="w-full bg-muted rounded-full h-2">
-                   <div className="bg-primary h-2 rounded-full transition-all duration-500" style={{ width: '83%' }}></div>
-                 </div>
-              </div>
+              <p className="text-muted-foreground text-sm font-medium">Totale Speso</p>
+              <p className="text-3xl font-bold text-foreground">€{totalSpentMonth.toFixed(2)}</p>
             </CardContent>
           </Card>
         </div>
 
         <div className="grid lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-5">
             <ExpenseForm onAdd={addExpense} />
           </div>
-          <div className="lg:col-span-8">
-            <BudgetOverview budgets={budgets} />
+          <div className="lg:col-span-7">
+            <Card className="shadow-lg border-none h-full">
+               <CardHeader className="border-b pb-4">
+                 <CardTitle className="text-lg font-bold flex items-center gap-2">
+                   <TrendingUp className="w-5 h-5 text-primary" /> Spese per Persona
+                 </CardTitle>
+               </CardHeader>
+               <CardContent className="pt-6">
+                  <div className="space-y-6">
+                    {USERS.map(user => {
+                      const userTotal = expenses.filter(e => e.paidBy === user.id).reduce((a, b) => a + b.amount, 0);
+                      const progress = totalSpentMonth > 0 ? (userTotal / totalSpentMonth) * 100 : 0;
+                      return (
+                        <div key={user.id} className="space-y-2">
+                           <div className="flex justify-between items-center">
+                             <div className="flex items-center gap-2">
+                               <User className="w-4 h-4 text-primary" />
+                               <span className="font-bold">{user.name}</span>
+                             </div>
+                             <span className="font-bold text-primary">€{userTotal.toFixed(2)}</span>
+                           </div>
+                           <div className="w-full bg-muted rounded-full h-3">
+                              <div 
+                                className="bg-primary h-3 rounded-full transition-all duration-500" 
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                           </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+               </CardContent>
+            </Card>
           </div>
         </div>
 
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-foreground">Analisi Categorie</h3>
-          </div>
+          <h3 className="text-xl font-bold text-foreground">Distribuzione Categorie</h3>
           <SpendingChart data={chartData} />
         </section>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          <SubscriptionList subscriptions={subscriptions} />
-          
-          <Card className="shadow-lg border-none">
-            <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-              <CardTitle className="text-foreground text-lg flex items-center gap-2 font-bold">
-                <ListTodo className="w-5 h-5 text-primary" /> Ultime Transazioni
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="space-y-4">
-                {expenses.length > 0 ? (
-                  expenses.slice(0, 6).map((exp, i) => (
-                    <div key={i} className="flex justify-between items-center p-3 hover:bg-accent/50 rounded-xl transition-all border border-transparent hover:border-accent">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                          <span className="font-bold text-sm uppercase">{exp.category[0]}</span>
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm text-foreground">{exp.description}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(exp.date).toLocaleDateString('it-IT')}</p>
+        <Card className="shadow-lg border-none">
+          <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+            <CardTitle className="text-foreground text-lg flex items-center gap-2 font-bold">
+              <CreditCard className="w-5 h-5 text-primary" /> Ultime Transazioni
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 p-0">
+            <div className="divide-y">
+              {expenses.length > 0 ? (
+                expenses.slice(0, 10).map((exp, i) => (
+                  <div key={i} className="flex justify-between items-center p-4 hover:bg-accent/30 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm text-foreground">{exp.description}</p>
+                        <div className="flex gap-2 items-center">
+                          <p className="text-xs text-muted-foreground">{USERS.find(u => u.id === exp.paidBy)?.name} ha pagato</p>
+                          <Badge variant="outline" className="text-[10px] py-0">
+                            {exp.splitType === 'split' ? 'Divisa' : exp.splitType === 'personal' ? 'Personale' : 'Per l\'altro'}
+                          </Badge>
                         </div>
                       </div>
-                      <p className="font-bold text-primary">-€{exp.amount.toFixed(2)}</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-10 text-muted-foreground">Nessuna transazione recente.</div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                    <div className="text-right">
+                      <p className="font-bold text-primary">€{exp.amount.toFixed(2)}</p>
+                      <p className="text-[10px] text-muted-foreground">{new Date(exp.date).toLocaleDateString('it-IT')}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-10 text-muted-foreground">Nessuna spesa registrata.</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </main>
       <Toaster />
     </div>

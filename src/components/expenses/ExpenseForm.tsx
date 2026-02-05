@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -7,19 +6,29 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Plus, Loader2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Sparkles, Plus, Loader2, User, Users, UserCheck } from 'lucide-react';
 import { EXPENSE_CATEGORIES } from '@/app/lib/categories';
 import { automaticExpenseCategorization } from '@/ai/flows/automatic-expense-categorization';
 import { useToast } from '@/hooks/use-toast';
 
 interface ExpenseFormProps {
-  onAdd: (expense: { description: string; amount: number; category: string; date: string }) => void;
+  onAdd: (expense: { 
+    description: string; 
+    amount: number; 
+    category: string; 
+    date: string;
+    paidBy: string;
+    splitType: string;
+  }) => void;
 }
 
 export function ExpenseForm({ onAdd }: ExpenseFormProps) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
+  const [paidBy, setPaidBy] = useState('u1');
+  const [splitType, setSplitType] = useState('split');
   const [isCategorizing, setIsCategorizing] = useState(false);
   const { toast } = useToast();
 
@@ -33,18 +42,9 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
       });
       if (result.category) {
         setCategory(result.category);
-        toast({
-          title: "Categoria Suggerita",
-          description: `L'IA ha scelto "${result.category}": ${result.reason || "sembra la più adatta."}`,
-        });
       }
     } catch (error) {
       console.error("AI categorization failed", error);
-      toast({
-        variant: "destructive",
-        title: "Errore IA",
-        description: "Non è stato possibile categorizzare automaticamente.",
-      });
     } finally {
       setIsCategorizing(false);
     }
@@ -52,11 +52,20 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description || !amount || !category) return;
+    if (!description || !amount || !category) {
+      toast({
+        variant: "destructive",
+        title: "Campi mancanti",
+        description: "Assicurati di inserire descrizione, importo e categoria.",
+      });
+      return;
+    }
     onAdd({
       description,
       amount: parseFloat(amount),
       category,
+      paidBy,
+      splitType,
       date: new Date().toISOString(),
     });
     setDescription('');
@@ -64,27 +73,27 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
     setCategory('');
     toast({
       title: "Spesa Aggiunta",
-      description: `Hai aggiunto €${amount} per ${description}.`,
+      description: `Hai registrato €${amount} pagati da ${paidBy === 'u1' ? 'Marco' : 'Sara'}.`,
     });
   };
 
   return (
-    <Card className="shadow-lg border-none">
-      <CardHeader className="pb-4">
+    <Card className="shadow-lg border-none overflow-hidden">
+      <CardHeader className="bg-primary/5 pb-4">
         <CardTitle className="flex items-center gap-2 text-primary">
           <Plus className="w-5 h-5" /> Registra Spesa
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="description">Descrizione</Label>
+            <Label htmlFor="description">Cosa avete comprato?</Label>
             <div className="relative">
               <Input
                 id="description"
-                placeholder="es. Caffè al bar"
+                placeholder="es. Spesa settimanale"
                 value={description}
-                className="pr-10"
+                className="pr-10 h-12 text-lg"
                 onChange={(e) => setDescription(e.target.value)}
                 onBlur={() => {
                    if (description.length > 3 && !category) handleAutoCategorize();
@@ -101,8 +110,8 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
                 {isCategorizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground px-1 italic">Suggerimento: L'IA categorizza per te mentre scrivi.</p>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amount">Importo (€)</Label>
@@ -111,6 +120,7 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
                 type="number"
                 step="0.01"
                 placeholder="0.00"
+                className="h-12 text-lg"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
@@ -118,7 +128,7 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
             <div className="space-y-2">
               <Label htmlFor="category">Categoria</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="category">
+                <SelectTrigger id="category" className="h-12">
                   <SelectValue placeholder="Seleziona" />
                 </SelectTrigger>
                 <SelectContent>
@@ -131,8 +141,46 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
               </Select>
             </div>
           </div>
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-11">
-            Aggiungi Transazione
+
+          <div className="space-y-4 pt-2">
+            <div className="space-y-3">
+              <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Chi ha pagato?</Label>
+              <RadioGroup value={paidBy} onValueChange={setPaidBy} className="flex gap-4">
+                <div className="flex items-center space-x-2 bg-muted p-3 rounded-lg flex-1 justify-center cursor-pointer hover:bg-primary/10 transition-colors">
+                  <RadioGroupItem value="u1" id="u1" />
+                  <Label htmlFor="u1" className="cursor-pointer font-bold">Marco</Label>
+                </div>
+                <div className="flex items-center space-x-2 bg-muted p-3 rounded-lg flex-1 justify-center cursor-pointer hover:bg-primary/10 transition-colors">
+                  <RadioGroupItem value="u2" id="u2" />
+                  <Label htmlFor="u2" className="cursor-pointer font-bold">Sara</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Come dividere?</Label>
+              <RadioGroup value={splitType} onValueChange={setSplitType} className="grid grid-cols-1 gap-2">
+                <div className="flex items-center space-x-3 bg-muted p-3 rounded-lg cursor-pointer hover:bg-primary/10 transition-colors">
+                  <RadioGroupItem value="split" id="split" />
+                  <Users className="w-4 h-4 text-primary" />
+                  <Label htmlFor="split" className="cursor-pointer font-medium flex-1">Dividi a metà (50/50)</Label>
+                </div>
+                <div className="flex items-center space-x-3 bg-muted p-3 rounded-lg cursor-pointer hover:bg-primary/10 transition-colors">
+                  <RadioGroupItem value="personal" id="personal" />
+                  <UserCheck className="w-4 h-4 text-primary" />
+                  <Label htmlFor="personal" className="cursor-pointer font-medium flex-1">Spesa Personale (0% debito)</Label>
+                </div>
+                <div className="flex items-center space-x-3 bg-muted p-3 rounded-lg cursor-pointer hover:bg-primary/10 transition-colors">
+                  <RadioGroupItem value="for_other" id="for_other" />
+                  <User className="w-4 h-4 text-primary" />
+                  <Label htmlFor="for_other" className="cursor-pointer font-medium flex-1">Interamente per l'altro (100% debito)</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-14 text-lg rounded-xl shadow-lg">
+            Aggiungi Spesa
           </Button>
         </form>
       </CardContent>

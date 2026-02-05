@@ -1,13 +1,13 @@
 export const EXPENSE_CATEGORIES = [
-  'Food & Dining',
+  'Spesa Alimentare',
   'Shopping',
-  'Transportation',
-  'Utilities',
-  'Entertainment',
-  'Health & Fitness',
-  'Subscriptions',
-  'Housing',
-  'Others',
+  'Trasporti',
+  'Bollette & Casa',
+  'Svago & Ristoranti',
+  'Salute & Fitness',
+  'Abbonamenti',
+  'Viaggi',
+  'Altro',
 ];
 
 export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number];
