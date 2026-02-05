@@ -28,7 +28,8 @@ import {
   Heart,
   Gamepad,
   Pizza,
-  Car
+  Car,
+  AlertTriangle
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -37,10 +38,32 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, compareDesc } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from '@/components/ui/dialog'; // Using Dialog components for simplicity as AlertDialog might need separate setup if not fully configured, but standard ShadCN AlertDialog is better. Let's use the provided AlertDialog.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { INITIAL_CATEGORIES, Category, AVAILABLE_ICONS, IconName } from '@/app/lib/categories';
+import {
+  AlertDialog as ShdnAlertDialog,
+  AlertDialogAction as ShdnAlertDialogAction,
+  AlertDialogCancel as ShdnAlertDialogCancel,
+  AlertDialogContent as ShdnAlertDialogContent,
+  AlertDialogDescription as ShdnAlertDialogDescription,
+  AlertDialogFooter as ShdnAlertDialogFooter,
+  AlertDialogHeader as ShdnAlertDialogHeader,
+  AlertDialogTitle as ShdnAlertDialogTitle,
+  AlertDialogTrigger as ShdnAlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export interface Expense {
   id: string;
@@ -385,7 +408,7 @@ export default function SpeseJournal() {
                 <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 opacity-70" />
-                    <span className="text-xs font-bold uppercase tracking-wider opacity-70">Spese comuni del gruppo</span>
+                    <span className="text-xs font-bold uppercase tracking-wider opacity-70">Totale spese comuni</span>
                   </div>
                   <span className="text-2xl font-black">€{totalSharedSpent.toFixed(2)}</span>
                 </div>
@@ -527,9 +550,33 @@ export default function SpeseJournal() {
                 <Button variant="outline" className="w-full justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]">
                   <Download className="w-6 h-6 text-primary" /> Esporta (CSV)
                 </Button>
-                <Button variant="destructive" className="w-full justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]" onClick={() => deleteGroup(activeGroupId!)}>
-                  <Trash2 className="w-6 h-6" /> Elimina questo conto
-                </Button>
+                
+                <ShdnAlertDialog>
+                  <ShdnAlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]">
+                      <Trash2 className="w-6 h-6" /> Elimina questo conto
+                    </Button>
+                  </ShdnAlertDialogTrigger>
+                  <ShdnAlertDialogContent className="rounded-[2.5rem]">
+                    <ShdnAlertDialogHeader>
+                      <ShdnAlertDialogTitle className="text-2xl font-black text-destructive flex items-center gap-3">
+                        <AlertTriangle className="w-8 h-8" /> Sei sicuro?
+                      </ShdnAlertDialogTitle>
+                      <ShdnAlertDialogDescription className="text-muted-foreground font-medium">
+                        Questa azione è irreversibile. Tutte le spese registrate in questo progetto verranno eliminate definitivamente.
+                      </ShdnAlertDialogDescription>
+                    </ShdnAlertDialogHeader>
+                    <ShdnAlertDialogFooter className="gap-3 mt-6">
+                      <ShdnAlertDialogCancel className="rounded-2xl h-12 font-black">ANNULLA</ShdnAlertDialogCancel>
+                      <ShdnAlertDialogAction 
+                        className="rounded-2xl h-12 bg-destructive hover:bg-destructive/90 font-black"
+                        onClick={() => deleteGroup(activeGroupId!)}
+                      >
+                        SÌ, ELIMINA TUTTO
+                      </ShdnAlertDialogAction>
+                    </ShdnAlertDialogFooter>
+                  </ShdnAlertDialogContent>
+                </ShdnAlertDialog>
               </CardContent>
             </Card>
           </TabsContent>
