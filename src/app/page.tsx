@@ -155,7 +155,13 @@ export default function SpeseJournal() {
     ].filter(d => d.value > 0);
   }, [expenses]);
 
-  const totalSpent = useMemo(() => expenses.reduce((acc, curr) => acc + curr.amount, 0), [expenses]);
+  // Il totale spese mostrato nel bilancio include solo quelle non personali
+  const totalSharedSpent = useMemo(() => 
+    expenses
+      .filter(e => e.splitType !== 'personal')
+      .reduce((acc, curr) => acc + curr.amount, 0), 
+    [expenses]
+  );
 
   if (!mounted) return null;
 
@@ -214,8 +220,8 @@ export default function SpeseJournal() {
               </div>
             </div>
             <div className="mt-6 pt-4 border-t border-white/20 flex justify-between items-center">
-              <span className="text-sm opacity-90">Spesa totale combinata:</span>
-              <span className="text-xl font-bold">€{totalSpent.toFixed(2)}</span>
+              <span className="text-sm opacity-90">Totale spese comuni:</span>
+              <span className="text-xl font-bold">€{totalSharedSpent.toFixed(2)}</span>
             </div>
           </CardContent>
         </Card>
