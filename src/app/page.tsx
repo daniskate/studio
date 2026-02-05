@@ -38,17 +38,6 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, compareDesc } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle, 
-  AlertDialogTrigger 
-} from '@/components/ui/dialog'; // Using Dialog components for simplicity as AlertDialog might need separate setup if not fully configured, but standard ShadCN AlertDialog is better. Let's use the provided AlertDialog.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -124,6 +113,15 @@ export default function SpeseJournal() {
 
   useEffect(() => {
     setMounted(true);
+    // Handle link sharing / join group
+    const params = new URLSearchParams(window.location.search);
+    const joinId = params.get('join');
+    if (joinId) {
+      setActiveGroupId(joinId);
+      // Optional: Logic to fetch group data from Firebase if not in local state
+      // For now we clear the URL to keep it clean
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const activeGroup = useMemo(() => 
@@ -166,6 +164,54 @@ export default function SpeseJournal() {
       setExpenses(prev => [{ ...newExpenseData, id: Math.random().toString(36).substr(2, 9), groupId: activeGroupId }, ...prev]);
     }
     setIsFormOpen(false);
+  };
+
+  const shareGroupLink = async () => {
+    if (!activeGroupId) return;
+    const url = `${window.location.origin}${window.location.pathname}?join=${activeGroupId}`;
+    
+    const copyToClipboard = async (text: string) => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch (err) {
+        console.error("Clipboard API failed", err);
+      }
+      
+      // Fallback
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        return successful;
+      } catch (err) {
+        console.error("Fallback copy failed", err);
+        return false;
+      }
+    };
+
+    const success = await copyToClipboard(url);
+    if (success) {
+      toast({
+        title: "Link Copiato!",
+        description: "Invia questo link per invitare altri nel conto.",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Errore di copia",
+        description: "Impossibile copiare automaticamente. Link: " + url,
+      });
+    }
   };
 
   const balances = useMemo(() => {
@@ -544,7 +590,7 @@ export default function SpeseJournal() {
                 <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-primary">Azioni Conto</CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
-                <Button variant="outline" className="w-full justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]" onClick={() => toast({ title: "Link Copiato!" })}>
+                <Button variant="outline" className="w-full justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]" onClick={shareGroupLink}>
                   <Share2 className="w-6 h-6 text-primary" /> Condividi Accesso
                 </Button>
                 <Button variant="outline" className="w-full justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]">
