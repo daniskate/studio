@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Sparkles, Loader2, User, Users, UserCheck, Calendar as CalendarIcon, Save } from 'lucide-react';
+import { Sparkles, Loader2, User, Users, UserCheck, Calendar as CalendarIcon, Save, Plus } from 'lucide-react';
 import { EXPENSE_CATEGORIES } from '@/app/lib/categories';
 import { automaticExpenseCategorization } from '@/ai/flows/automatic-expense-categorization';
 import { useToast } from '@/hooks/use-toast';
@@ -55,7 +55,7 @@ export function ExpenseForm({ onAdd, initialData }: ExpenseFormProps) {
         setCategory(result.category);
       }
     } catch (error) {
-      console.error("AI categorization failed", error);
+      // Error handling is managed centrally
     } finally {
       setIsCategorizing(false);
     }
@@ -80,7 +80,6 @@ export function ExpenseForm({ onAdd, initialData }: ExpenseFormProps) {
       date: date.toISOString(),
     });
     
-    // Reset solo se non siamo in editing
     if (!initialData) {
       setDescription('');
       setAmount('');
