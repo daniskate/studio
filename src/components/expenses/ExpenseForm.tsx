@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,7 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
   const { toast } = useToast();
 
   const handleAutoCategorize = async () => {
-    if (!description) return;
+    if (!description || description.length < 3) return;
     setIsCategorizing(true);
     try {
       const result = await automaticExpenseCategorization({
@@ -33,12 +34,17 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
       if (result.category) {
         setCategory(result.category);
         toast({
-          title: "Category Suggested",
-          description: `AI suggested "${result.category}" because: ${result.reason || "it fits best."}`,
+          title: "Categoria Suggerita",
+          description: `L'IA ha scelto "${result.category}": ${result.reason || "sembra la più adatta."}`,
         });
       }
     } catch (error) {
       console.error("AI categorization failed", error);
+      toast({
+        variant: "destructive",
+        title: "Errore IA",
+        description: "Non è stato possibile categorizzare automaticamente.",
+      });
     } finally {
       setIsCategorizing(false);
     }
@@ -56,24 +62,29 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
     setDescription('');
     setAmount('');
     setCategory('');
+    toast({
+      title: "Spesa Aggiunta",
+      description: `Hai aggiunto €${amount} per ${description}.`,
+    });
   };
 
   return (
-    <Card className="shadow-lg border-primary/10">
-      <CardHeader>
+    <Card className="shadow-lg border-none">
+      <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-primary">
-          <Plus className="w-5 h-5" /> Record Expense
+          <Plus className="w-5 h-5" /> Registra Spesa
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Descrizione</Label>
             <div className="relative">
               <Input
                 id="description"
-                placeholder="e.g., Starbucks Coffee"
+                placeholder="es. Caffè al bar"
                 value={description}
+                className="pr-10"
                 onChange={(e) => setDescription(e.target.value)}
                 onBlur={() => {
                    if (description.length > 3 && !category) handleAutoCategorize();
@@ -83,17 +94,18 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary hover:text-secondary/80"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80"
                 onClick={handleAutoCategorize}
                 disabled={isCategorizing || !description}
               >
                 {isCategorizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               </Button>
             </div>
+            <p className="text-[10px] text-muted-foreground px-1 italic">Suggerimento: L'IA categorizza per te mentre scrivi.</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount ($)</Label>
+              <Label htmlFor="amount">Importo (€)</Label>
               <Input
                 id="amount"
                 type="number"
@@ -104,10 +116,10 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">Categoria</Label>
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger id="category">
-                  <SelectValue placeholder="Select" />
+                  <SelectValue placeholder="Seleziona" />
                 </SelectTrigger>
                 <SelectContent>
                   {EXPENSE_CATEGORIES.map((cat) => (
@@ -119,8 +131,8 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
               </Select>
             </div>
           </div>
-          <Button type="submit" className="w-full bg-secondary hover:bg-secondary/90 text-white">
-            Add Transaction
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-11">
+            Aggiungi Transazione
           </Button>
         </form>
       </CardContent>
