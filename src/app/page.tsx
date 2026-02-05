@@ -96,12 +96,10 @@ export default function SpeseJournal() {
     setIsFormOpen(true);
   };
 
-  // Ordinamento per data decrescente
   const sortedExpenses = useMemo(() => {
     return [...expenses].sort((a, b) => compareDesc(parseISO(a.date), parseISO(b.date)));
   }, [expenses]);
 
-  // Calcolo Bilancio (Tricount Style)
   const balances = useMemo(() => {
     let u1OwesU2 = 0;
     let u2OwesU1 = 0;
@@ -125,7 +123,6 @@ export default function SpeseJournal() {
     };
   }, [expenses]);
 
-  // Dati per i grafici
   const categoryData = useMemo(() => {
     const data: Record<string, number> = {};
     expenses.forEach(exp => {
@@ -148,14 +145,14 @@ export default function SpeseJournal() {
       }
     });
 
-    return [
-      { name: 'Pers. Marco', value: marcoTotal },
-      { name: 'Pers. Sara', value: saraTotal },
-      { name: 'Comuni', value: sharedTotal }
-    ].filter(d => d.value > 0);
+    const data = [];
+    if (marcoTotal > 0) data.push({ name: 'Pers. Marco', value: marcoTotal });
+    if (saraTotal > 0) data.push({ name: 'Pers. Sara', value: saraTotal });
+    if (sharedTotal > 0) data.push({ name: 'Comuni', value: sharedTotal });
+    
+    return data;
   }, [expenses]);
 
-  // Il totale spese mostrato nel bilancio include solo quelle non personali
   const totalSharedSpent = useMemo(() => 
     expenses
       .filter(e => e.splitType !== 'personal')
@@ -167,7 +164,6 @@ export default function SpeseJournal() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between px-4 max-w-2xl mx-auto">
           <div className="flex items-center gap-2">
@@ -199,8 +195,7 @@ export default function SpeseJournal() {
         </div>
       </header>
 
-      <main className="container max-w-2xl mx-auto p-4 space-y-6">
-        {/* Card Bilancio */}
+      <main className="container max-w-2xl mx-auto p-4 space-y-6 pb-20">
         <Card className={`border-none shadow-xl transition-colors duration-500 overflow-hidden ${
           balances.diff === 0 ? 'bg-primary' : 
           balances.u2OwesU1 > 0 ? 'bg-emerald-500' : 'bg-rose-500'
@@ -226,7 +221,6 @@ export default function SpeseJournal() {
           </CardContent>
         </Card>
 
-        {/* Grafici Collassabili */}
         <Collapsible
           open={showCharts}
           onOpenChange={setShowCharts}
@@ -242,20 +236,19 @@ export default function SpeseJournal() {
               </Button>
             </CollapsibleTrigger>
           </div>
-          <CollapsibleContent className="space-y-4">
-            <SpendingChart data={categoryData} />
-            <Card className="border-none shadow-md overflow-hidden bg-accent/30">
-              <CardHeader className="py-3">
-                <CardTitle className="text-sm font-bold text-primary uppercase tracking-tight">Ripartizione Personale vs Comuni</CardTitle>
-              </CardHeader>
-              <CardContent className="p-2 h-[250px]">
-                <SpendingChart data={personalVsSharedData} />
-              </CardContent>
-            </Card>
+          <CollapsibleContent className="space-y-6 pt-2">
+            <div className="space-y-4">
+              <SpendingChart data={categoryData} />
+              {personalVsSharedData.length > 0 && (
+                <div className="pt-2">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 px-1">Ripartizione Personale vs Comuni</h4>
+                  <SpendingChart data={personalVsSharedData} />
+                </div>
+              )}
+            </div>
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Registro Spese */}
         <div className="space-y-4">
           <h3 className="text-lg font-bold flex items-center gap-2 px-1">
             <Receipt className="w-5 h-5 text-primary" /> Registro Transazioni
