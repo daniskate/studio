@@ -1,26 +1,29 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { ExpenseForm } from '@/components/expenses/ExpenseForm';
+import { SpendingChart } from '@/components/reports/SpendingChart';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
   Users, 
-  Menu,
   ArrowRightLeft,
   Plus,
   Trash2,
   Edit2,
-  Calendar as CalendarIcon,
-  Receipt
+  Receipt,
+  PieChart as PieIcon,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, compareDesc } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const USERS = [
   { id: 'u1', name: 'Marco' },
@@ -62,6 +65,7 @@ export default function SpeseJournal() {
   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
@@ -121,13 +125,43 @@ export default function SpeseJournal() {
     };
   }, [expenses]);
 
+  // Dati per i grafici
+  const categoryData = useMemo(() => {
+    const data: Record<string, number> = {};
+    expenses.forEach(exp => {
+      data[exp.category] = (data[exp.category] || 0) + exp.amount;
+    });
+    return Object.entries(data).map(([name, value]) => ({ name, value }));
+  }, [expenses]);
+
+  const personalVsSharedData = useMemo(() => {
+    let marcoTotal = 0;
+    let saraTotal = 0;
+    let sharedTotal = 0;
+
+    expenses.forEach(exp => {
+      if (exp.splitType === 'personal') {
+        if (exp.paidBy === 'u1') marcoTotal += exp.amount;
+        else saraTotal += exp.amount;
+      } else {
+        sharedTotal += exp.amount;
+      }
+    });
+
+    return [
+      { name: 'Pers. Marco', value: marcoTotal },
+      { name: 'Pers. Sara', value: saraTotal },
+      { name: 'Comuni', value: sharedTotal }
+    ].filter(d => d.value > 0);
+  }, [expenses]);
+
   const totalSpent = useMemo(() => expenses.reduce((acc, curr) => acc + curr.amount, 0), [expenses]);
 
   if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Mobile & Desktop */}
+      {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between px-4 max-w-2xl mx-auto">
           <div className="flex items-center gap-2">
@@ -160,7 +194,7 @@ export default function SpeseJournal() {
       </header>
 
       <main className="container max-w-2xl mx-auto p-4 space-y-6">
-        {/* Card Bilancio - Sempre visibile in alto */}
+        {/* Card Bilancio */}
         <Card className={`border-none shadow-xl transition-colors duration-500 overflow-hidden ${
           balances.diff === 0 ? 'bg-primary' : 
           balances.u2OwesU1 > 0 ? 'bg-emerald-500' : 'bg-rose-500'
@@ -168,7 +202,7 @@ export default function SpeseJournal() {
           <CardContent className="p-6 text-white">
             <div className="flex justify-between items-center">
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wider opacity-80">Stato Bilancio</p>
+                <p className="text-xs font-medium uppercase tracking-wider opacity-80">Bilancio Attuale</p>
                 <h2 className="text-2xl font-bold">
                   {balances.diff === 0 ? "Siete in pari!" : 
                    balances.u2OwesU1 > 0 ? `Sara deve a Marco €${balances.u2OwesU1.toFixed(2)}` : 
@@ -180,11 +214,40 @@ export default function SpeseJournal() {
               </div>
             </div>
             <div className="mt-6 pt-4 border-t border-white/20 flex justify-between items-center">
-              <span className="text-sm opacity-90">Totale speso insieme:</span>
+              <span className="text-sm opacity-90">Spesa totale combinata:</span>
               <span className="text-xl font-bold">€{totalSpent.toFixed(2)}</span>
             </div>
           </CardContent>
         </Card>
+
+        {/* Grafici Collassabili */}
+        <Collapsible
+          open={showCharts}
+          onOpenChange={setShowCharts}
+          className="space-y-2"
+        >
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <PieIcon className="w-4 h-4" /> Analisi Spese
+            </h3>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                {showCharts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="space-y-4">
+            <SpendingChart data={categoryData} />
+            <Card className="border-none shadow-md overflow-hidden bg-accent/30">
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm font-bold text-primary uppercase tracking-tight">Ripartizione Personale vs Comuni</CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 h-[250px]">
+                <SpendingChart data={personalVsSharedData} />
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Registro Spese */}
         <div className="space-y-4">
@@ -194,16 +257,15 @@ export default function SpeseJournal() {
           
           <div className="space-y-6">
             {sortedExpenses.length > 0 ? (
-              // Raggruppamento semplice per mese (visuale)
               sortedExpenses.map((exp, index) => {
                 const currentDate = parseISO(exp.date);
                 const showMonthHeader = index === 0 || 
-                  format(parseISO(sortedExpenses[index-1].date), 'MMMM') !== format(currentDate, 'MMMM');
+                  format(parseISO(sortedExpenses[index-1].date), 'MMMM', { locale: it }) !== format(currentDate, 'MMMM', { locale: it });
 
                 return (
                   <div key={exp.id} className="space-y-3">
                     {showMonthHeader && (
-                      <div className="sticky top-20 z-10 py-1 px-4 bg-muted/80 backdrop-blur-sm rounded-full inline-block text-xs font-bold uppercase tracking-widest text-muted-foreground shadow-sm">
+                      <div className="sticky top-20 z-10 py-1 px-4 bg-muted/90 backdrop-blur-sm rounded-full inline-block text-xs font-bold uppercase tracking-widest text-muted-foreground shadow-sm">
                         {format(currentDate, 'MMMM yyyy', { locale: it })}
                       </div>
                     )}
@@ -233,7 +295,7 @@ export default function SpeseJournal() {
                           <div className="text-right">
                             <p className="font-bold text-lg">€{exp.amount.toFixed(2)}</p>
                             <p className="text-[10px] text-muted-foreground">
-                              pagato da {USERS.find(u => u.id === exp.paidBy)?.name}
+                              {USERS.find(u => u.id === exp.paidBy)?.name}
                             </p>
                           </div>
                           
@@ -253,9 +315,7 @@ export default function SpeseJournal() {
               })
             ) : (
               <div className="text-center py-20 text-muted-foreground">
-                <div className="mb-4 flex justify-center">
-                  <Receipt className="w-12 h-12 opacity-20" />
-                </div>
+                <Receipt className="w-12 h-12 opacity-20 mx-auto mb-4" />
                 <p>Nessuna spesa registrata ancora.</p>
                 <Button variant="link" onClick={() => setIsFormOpen(true)}>Inizia ora</Button>
               </div>
