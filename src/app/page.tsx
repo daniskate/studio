@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { ExpenseForm } from '@/components/expenses/ExpenseForm';
 import { SpendingChart } from '@/components/reports/SpendingChart';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Users, 
   ArrowRightLeft,
@@ -12,14 +13,13 @@ import {
   Edit2,
   Receipt,
   PieChart as PieIcon,
-  ChevronDown,
-  ChevronUp,
   Settings,
   LayoutDashboard,
   Download,
   Share2,
-  UserEdit,
-  Save
+  Save,
+  User,
+  ChartBar
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,6 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, compareDesc } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -68,7 +67,6 @@ export default function SpeseJournal() {
   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [showCharts, setShowCharts] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   
@@ -170,34 +168,38 @@ export default function SpeseJournal() {
     };
   }, [expenses]);
 
-  const categoryData = useMemo(() => {
+  // Grafici Spese Condivise (Solo split e for_other)
+  const sharedCategoryData = useMemo(() => {
     const data: Record<string, number> = {};
-    expenses.forEach(exp => {
+    expenses.filter(e => e.splitType !== 'personal').forEach(exp => {
       data[exp.category] = (data[exp.category] || 0) + exp.amount;
     });
     return Object.entries(data).map(([name, value]) => ({ name, value }));
   }, [expenses]);
 
-  const personalVsSharedData = useMemo(() => {
-    let u1Total = 0;
-    let u2Total = 0;
-    let sharedTotal = 0;
+  // Grafici Spese Personali (Personali + Quota delle divise)
+  const personalBreakdownData = useMemo(() => {
+    let u1RealTotal = 0;
+    let u2RealTotal = 0;
 
     expenses.forEach(exp => {
       if (exp.splitType === 'personal') {
-        if (exp.paidBy === 'u1') u1Total += exp.amount;
-        else u2Total += exp.amount;
-      } else {
-        sharedTotal += exp.amount;
+        if (exp.paidBy === 'u1') u1RealTotal += exp.amount;
+        else u2RealTotal += exp.amount;
+      } else if (exp.splitType === 'split') {
+        u1RealTotal += exp.amount / 2;
+        u2RealTotal += exp.amount / 2;
+      } else if (exp.splitType === 'for_other') {
+        // Se pagato da u1 per u2, la spesa "reale" è di u2
+        if (exp.paidBy === 'u1') u2RealTotal += exp.amount;
+        else u1RealTotal += exp.amount;
       }
     });
 
-    const data = [];
-    if (u1Total > 0) data.push({ name: `Pers. ${user1Name}`, value: u1Total });
-    if (u2Total > 0) data.push({ name: `Pers. ${user2Name}`, value: u2Total });
-    if (sharedTotal > 0) data.push({ name: 'Comuni', value: sharedTotal });
-    
-    return data;
+    return [
+      { name: user1Name, value: u1RealTotal },
+      { name: user2Name, value: u2RealTotal }
+    ];
   }, [expenses, user1Name, user2Name]);
 
   const totalSharedSpent = useMemo(() => 
@@ -246,6 +248,7 @@ export default function SpeseJournal() {
 
       <main className="container max-w-2xl mx-auto p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          
           <TabsContent value="dashboard" className="space-y-6 m-0">
             <Card className={`border-none shadow-xl transition-colors duration-500 overflow-hidden ${
               balances.diff === 0 ? 'bg-primary' : 
@@ -271,30 +274,6 @@ export default function SpeseJournal() {
                 </div>
               </CardContent>
             </Card>
-
-            <Collapsible open={showCharts} onOpenChange={setShowCharts} className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <PieIcon className="w-4 h-4" /> Analisi Spese
-                </h3>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    {showCharts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-              <CollapsibleContent className="space-y-6 pt-2">
-                <div className="space-y-4">
-                  <SpendingChart data={categoryData} />
-                  {personalVsSharedData.length > 0 && (
-                    <div className="pt-2">
-                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 px-1">Ripartizione Personale vs Comuni</h4>
-                      <SpendingChart data={personalVsSharedData} />
-                    </div>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
 
             <div className="space-y-4">
               <h3 className="text-lg font-bold flex items-center gap-2 px-1">
@@ -346,10 +325,10 @@ export default function SpeseJournal() {
                               </div>
                               
                               <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => startEdit(exp)}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); startEdit(exp); }}>
                                   <Edit2 className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteExpense(exp.id)}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); deleteExpense(exp.id); }}>
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
@@ -366,6 +345,37 @@ export default function SpeseJournal() {
                   </div>
                 )}
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="condivise" className="space-y-6 m-0">
+            <h2 className="text-2xl font-bold px-1">Analisi Spese Comuni</h2>
+            <p className="text-sm text-muted-foreground px-1">Visualizza la ripartizione di tutte le spese divise al 50/50 o pagate per l'altro.</p>
+            <SpendingChart data={sharedCategoryData} />
+          </TabsContent>
+
+          <TabsContent value="personali" className="space-y-6 m-0">
+            <h2 className="text-2xl font-bold px-1">Spese Reali per Persona</h2>
+            <p className="text-sm text-muted-foreground px-1">Il totale include le spese personali più la quota del 50% delle spese comuni.</p>
+            
+            <Card className="border-none shadow-md overflow-hidden">
+               <CardHeader className="bg-primary/5">
+                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-primary">Confronto {user1Name} vs {user2Name}</CardTitle>
+               </CardHeader>
+               <CardContent className="p-6">
+                 <SpendingChart data={personalBreakdownData} />
+               </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4">
+               {personalBreakdownData.map((item) => (
+                 <Card key={item.name} className="border-none shadow-sm bg-muted/30">
+                   <CardContent className="p-4 text-center">
+                     <p className="text-xs font-bold text-muted-foreground uppercase">{item.name}</p>
+                     <p className="text-xl font-black text-foreground">€{item.value.toFixed(2)}</p>
+                   </CardContent>
+                 </Card>
+               ))}
             </div>
           </TabsContent>
 
@@ -419,22 +429,38 @@ export default function SpeseJournal() {
       </main>
 
       {/* Navigation Bar for Android Style */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t px-6 h-16 flex items-center justify-around max-w-2xl mx-auto">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t px-2 h-16 flex items-center justify-around max-w-2xl mx-auto">
         <Button 
           variant="ghost" 
           className={`flex flex-col items-center gap-1 h-auto p-2 min-w-[70px] ${activeTab === 'dashboard' ? 'text-primary' : 'text-muted-foreground'}`}
           onClick={() => setActiveTab('dashboard')}
         >
-          <LayoutDashboard className="w-6 h-6" />
-          <span className="text-[10px] font-bold">Dashboard</span>
+          <LayoutDashboard className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Registro</span>
+        </Button>
+        <Button 
+          variant="ghost" 
+          className={`flex flex-col items-center gap-1 h-auto p-2 min-w-[70px] ${activeTab === 'condivise' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => setActiveTab('condivise')}
+        >
+          <PieIcon className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Condivise</span>
+        </Button>
+        <Button 
+          variant="ghost" 
+          className={`flex flex-col items-center gap-1 h-auto p-2 min-w-[70px] ${activeTab === 'personali' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => setActiveTab('personali')}
+        >
+          <User className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Personali</span>
         </Button>
         <Button 
           variant="ghost" 
           className={`flex flex-col items-center gap-1 h-auto p-2 min-w-[70px] ${activeTab === 'settings' ? 'text-primary' : 'text-muted-foreground'}`}
           onClick={() => setActiveTab('settings')}
         >
-          <Settings className="w-6 h-6" />
-          <span className="text-[10px] font-bold">Impostazioni</span>
+          <Settings className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Opzioni</span>
         </Button>
       </nav>
 
