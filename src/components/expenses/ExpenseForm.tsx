@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import { Expense } from '@/app/page';
 
 interface ExpenseFormProps {
-  onAdd: (expense: Omit<Expense, 'id'>) => void;
+  onAdd: (expense: Omit<Expense, 'id' | 'groupId'>) => void;
   initialData?: Expense | null;
   categories: Category[];
   user1Name?: string;
