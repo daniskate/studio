@@ -1,0 +1,135 @@
+rules_version = '2';
+
+/**
+ * FIRESTORE SECURITY RULES - PROTOTYPING MODE
+ * 
+ * CORE PHILOSOPHY:
+ * This ruleset enforces a strict Path-Based Ownership model where all application data 
+ * is logically nested under the owner's user document. This ensures that by default, 
+ * data is private and only accessible to the creator.
+ * 
+ * DATA STRUCTURE:
+ * - /users/{userId}: Root user profiles.
+ * - /users/{userId}/budgets/{budgetId}: Monthly budget allocations.
+ * - /users/{userId}/categories/{categoryId}: Custom expense categories.
+ * - /users/{userId}/expenses/{expenseId}: Individual transaction records.
+ * - /users/{userId}/subscriptions/{subscriptionId}: Recurring payment records.
+ * 
+ * KEY SECURITY DECISIONS:
+ * 1. Path-Based Authorization: Authorization is derived primarily from the {userId} 
+ *    component of the document path, which is matched against the request.auth.uid.
+ * 2. Link Sharing: To support "sharing via link," individual document 'get' requests 
+ *    are permitted if a document has an 'isPublic' flag set to true, even if the 
+ *    requester is not the owner or signed in.
+ * 3. Private Listing: The 'list' operation is strictly limited to the owner. This 
+ *    prevents unauthorized users from discovering or enumerating data, even if 
+ *    individual items are shared via link.
+ * 4. Relational Integrity: On creation and update, rules enforce that the internal 
+ *    'userId' field remains consistent with the document path and immutable.
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- HELPER FUNCTIONS ---
+
+    /** @description Checks if the user is authenticated. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the authenticated user's ID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Checks ownership and ensures the document exists for state-changing operations. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** @description Checks if a document is explicitly marked as public for link-sharing. */
+    function isPubliclyShared() {
+      return resource != null && resource.data.get('isPublic', false) == true;
+    }
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for user profile documents.
+     * @path /users/{userId}
+     * @allow (get, list, create, update, delete) if the user is the owner of the path.
+     * @deny (all) if the authenticated user's UID does not match the {userId} in the path.
+     * @principle Self-creation and strict path ownership.
+     */
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update, delete: if isExistingOwner(userId);
+
+      /**
+       * @description Rules for budgets associated with a user.
+       * @path /users/{userId}/budgets/{budgetId}
+       * @allow (get) if the owner is requesting OR if 'isPublic' is true (link sharing).
+       * @allow (create) if the user is the owner and the userId field matches the path.
+       * @deny (list) if the requester is not the owner, even if items are public.
+       * @principle Path ownership and selective public read access for link sharing.
+       */
+      match /budgets/{budgetId} {
+        allow get: if isOwner(userId) || isPubliclyShared();
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for categories associated with a user.
+       * @path /users/{userId}/categories/{categoryId}
+       * @allow (get) if the owner is requesting OR if 'isPublic' is true.
+       * @allow (update) if owner and the userId field is not being changed.
+       * @deny (delete) if the document does not exist or requester is not the owner.
+       * @principle Relational integrity and path-based authorization.
+       */
+      match /categories/{categoryId} {
+        allow get: if isOwner(userId) || isPubliclyShared();
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for expense transactions.
+       * @path /users/{userId}/expenses/{expenseId}
+       * @allow (get) if owner or link-sharing is enabled.
+       * @allow (list) only for the authenticated owner.
+       * @deny (create) if the incoming data's userId does not match the path userId.
+       * @principle Data consistency and owner-only listing.
+       */
+      match /expenses/{expenseId} {
+        allow get: if isOwner(userId) || isPubliclyShared();
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for recurring subscriptions.
+       * @path /users/{userId}/subscriptions/{subscriptionId}
+       * @allow (create) if authenticated UID matches path and internal data.
+       * @allow (update, delete) if authenticated UID matches path and doc exists.
+       * @deny (update) if attempting to change the userId ownership field.
+       * @principle Immutable ownership fields and path-based security.
+       */
+      match /subscriptions/{subscriptionId} {
+        allow get: if isOwner(userId) || isPubliclyShared();
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+  }
+}
