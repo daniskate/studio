@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -8,12 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Sparkles, Loader2, User, Users, UserCheck, Calendar as CalendarIcon, Save, Plus } from 'lucide-react';
+import { User, Users, UserCheck, Calendar as CalendarIcon, Save, Plus } from 'lucide-react';
 import { Category, AVAILABLE_ICONS, IconName } from '@/app/lib/categories';
-import { automaticExpenseCategorization } from '@/ai/flows/automatic-expense-categorization';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { it } from 'date-fns/locale';
 import { Expense } from '@/app/page';
 
 interface ExpenseFormProps {
@@ -31,7 +30,6 @@ export function ExpenseForm({ onAdd, initialData, categories, user1Name = 'Marco
   const [paidBy, setPaidBy] = useState('u1');
   const [splitType, setSplitType] = useState<'split' | 'personal' | 'for_other'>('split');
   const [date, setDate] = useState<Date>(new Date());
-  const [isCategorizing, setIsCategorizing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,25 +42,6 @@ export function ExpenseForm({ onAdd, initialData, categories, user1Name = 'Marco
       setDate(new Date(initialData.date));
     }
   }, [initialData]);
-
-  const handleAutoCategorize = async () => {
-    if (!description || description.length < 3) return;
-    setIsCategorizing(true);
-    try {
-      const result = await automaticExpenseCategorization({
-        transactionDetails: description,
-        categories: categories.map(c => c.name),
-      });
-      if (result.category) {
-        const matched = categories.find(c => c.name.toLowerCase() === result.category.toLowerCase());
-        if (matched) setCategoryId(matched.id);
-      }
-    } catch (error) {
-      // Ignored
-    } finally {
-      setIsCategorizing(false);
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,25 +74,12 @@ export function ExpenseForm({ onAdd, initialData, categories, user1Name = 'Marco
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Descrizione</Label>
-        <div className="relative">
-          <Input
-            placeholder="es. Pizza e birra"
-            value={description}
-            className="h-16 rounded-[1.5rem] text-lg border-2 border-muted focus:border-primary px-6 shadow-sm"
-            onChange={(e) => setDescription(e.target.value)}
-            onBlur={() => { if (description.length > 3 && !categoryId) handleAutoCategorize(); }}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:bg-primary/10 rounded-full h-10 w-10"
-            onClick={handleAutoCategorize}
-            disabled={isCategorizing || !description}
-          >
-            {isCategorizing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-          </Button>
-        </div>
+        <Input
+          placeholder="es. Pizza e birra"
+          value={description}
+          className="h-16 rounded-[1.5rem] text-lg border-2 border-muted focus:border-primary px-6 shadow-sm"
+          onChange={(e) => setDescription(e.target.value)}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
