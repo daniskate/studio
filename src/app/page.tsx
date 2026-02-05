@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -19,7 +20,15 @@ import {
   Check,
   User,
   PlusCircle,
-  TrendingUp
+  TrendingUp,
+  ChevronLeft,
+  Plane,
+  Home,
+  Briefcase,
+  Heart,
+  Gamepad,
+  Pizza,
+  Car
 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -35,6 +44,7 @@ import { INITIAL_CATEGORIES, Category, AVAILABLE_ICONS, IconName } from '@/app/l
 
 export interface Expense {
   id: string;
+  groupId: string;
   description: string;
   amount: number;
   categoryId: string;
@@ -43,9 +53,22 @@ export interface Expense {
   splitType: 'split' | 'personal' | 'for_other';
 }
 
+export interface ExpenseGroup {
+  id: string;
+  name: string;
+  iconName: IconName;
+  color: string;
+}
+
+const INITIAL_GROUPS: ExpenseGroup[] = [
+  { id: 'g1', name: 'Spese Casa', iconName: 'Home', color: '#2D6A4F' },
+  { id: 'g2', name: 'Viaggio Parigi', iconName: 'Plane', color: '#3B82F6' },
+];
+
 const INITIAL_EXPENSES: Expense[] = [
   { 
     id: '1',
+    groupId: 'g1',
     description: 'Cena Pizzeria', 
     amount: 40.00, 
     categoryId: 'cat2', 
@@ -53,34 +76,26 @@ const INITIAL_EXPENSES: Expense[] = [
     paidBy: 'u1',
     splitType: 'split'
   },
-  { 
-    id: '2',
-    description: 'Spesa Esselunga', 
-    amount: 60.50, 
-    categoryId: 'cat1', 
-    date: new Date(Date.now() - 86400000).toISOString(),
-    paidBy: 'u2',
-    splitType: 'split'
-  },
 ];
 
 export default function SpeseJournal() {
+  const [groups, setGroups] = useState<ExpenseGroup[]>(INITIAL_GROUPS);
   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
   
-  // Settings State
-  const [groupName, setGroupName] = useState('NoiDue');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isGroupDialogOpen, setIsGroupDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [mounted, setMounted] = useState(false);
+  
+  // Settings & Group Creation State
   const [user1Name, setUser1Name] = useState('Marco');
   const [user2Name, setUser2Name] = useState('Sara');
-
-  // New Category State
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatIcon, setNewCatIcon] = useState<IconName>('Layers');
-  const [newCatColor, setNewCatColor] = useState('#2D6A4F');
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupIcon, setNewGroupIcon] = useState<IconName>('Briefcase');
+  const [newGroupColor, setNewGroupColor] = useState('#2D6A4F');
 
   const { toast } = useToast();
 
@@ -88,47 +103,53 @@ export default function SpeseJournal() {
     setMounted(true);
   }, []);
 
-  const addExpense = (newExpense: any) => {
+  const activeGroup = useMemo(() => 
+    groups.find(g => g.id === activeGroupId), 
+    [groups, activeGroupId]
+  );
+
+  const filteredExpenses = useMemo(() => 
+    expenses.filter(e => e.groupId === activeGroupId),
+    [expenses, activeGroupId]
+  );
+
+  const addGroup = () => {
+    if (!newGroupName) return;
+    const newGroup: ExpenseGroup = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newGroupName,
+      iconName: newGroupIcon,
+      color: newGroupColor,
+    };
+    setGroups(prev => [...prev, newGroup]);
+    setNewGroupName('');
+    setIsGroupDialogOpen(false);
+    toast({ title: "Gruppo creato!", description: `${newGroup.name} è pronto.` });
+  };
+
+  const deleteGroup = (id: string) => {
+    setGroups(prev => prev.filter(g => g.id !== id));
+    setExpenses(prev => prev.filter(e => e.groupId !== id));
+    setActiveGroupId(null);
+    toast({ title: "Gruppo eliminato", variant: "destructive" });
+  };
+
+  const addExpense = (newExpenseData: any) => {
+    if (!activeGroupId) return;
     if (editingExpense) {
-      setExpenses(prev => prev.map(e => e.id === editingExpense.id ? { ...newExpense, id: e.id } : e));
+      setExpenses(prev => prev.map(e => e.id === editingExpense.id ? { ...newExpenseData, id: e.id, groupId: activeGroupId } : e));
       setEditingExpense(null);
     } else {
-      setExpenses(prev => [{ ...newExpense, id: Math.random().toString(36).substr(2, 9) }, ...prev]);
+      setExpenses(prev => [{ ...newExpenseData, id: Math.random().toString(36).substr(2, 9), groupId: activeGroupId }, ...prev]);
     }
     setIsFormOpen(false);
-  };
-
-  const deleteExpense = (id: string) => {
-    setExpenses(prev => prev.filter(e => e.id !== id));
-    toast({
-      title: "Spesa eliminata",
-      description: "La transazione è stata rimossa correttamente.",
-    });
-  };
-
-  const startEdit = (expense: Expense) => {
-    setEditingExpense(expense);
-    setIsFormOpen(true);
-  };
-
-  const addCategory = () => {
-    if (!newCatName) return;
-    const newCat: Category = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newCatName,
-      iconName: newCatIcon,
-      color: newCatColor,
-    };
-    setCategories(prev => [...prev, newCat]);
-    setNewCatName('');
-    toast({ title: "Categoria aggiunta", description: `${newCatName} è ora disponibile.` });
   };
 
   const balances = useMemo(() => {
     let u1OwesU2 = 0;
     let u2OwesU1 = 0;
 
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       if (exp.splitType === 'split') {
         const half = exp.amount / 2;
         if (exp.paidBy === 'u1') u2OwesU1 += half;
@@ -145,23 +166,23 @@ export default function SpeseJournal() {
       u1OwesU2: diff < 0 ? Math.abs(diff) : 0,
       u2OwesU1: diff > 0 ? diff : 0
     };
-  }, [expenses]);
+  }, [filteredExpenses]);
 
   const sharedCategoryData = useMemo(() => {
     const data: Record<string, number> = {};
-    expenses.filter(e => e.splitType !== 'personal').forEach(exp => {
+    filteredExpenses.filter(e => e.splitType !== 'personal').forEach(exp => {
       const cat = categories.find(c => c.id === exp.categoryId);
       const name = cat?.name || 'Altro';
       data[name] = (data[name] || 0) + exp.amount;
     });
     return Object.entries(data).map(([name, value]) => ({ name, value }));
-  }, [expenses, categories]);
+  }, [filteredExpenses, categories]);
 
   const personalBreakdownData = useMemo(() => {
     let u1RealTotal = 0;
     let u2RealTotal = 0;
 
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       if (exp.splitType === 'personal') {
         if (exp.paidBy === 'u1') u1RealTotal += exp.amount;
         else u2RealTotal += exp.amount;
@@ -178,30 +199,136 @@ export default function SpeseJournal() {
       { name: user1Name, value: u1RealTotal },
       { name: user2Name, value: u2RealTotal }
     ];
-  }, [expenses, user1Name, user2Name]);
+  }, [filteredExpenses, user1Name, user2Name]);
 
   const totalSharedSpent = useMemo(() => 
-    expenses
+    filteredExpenses
       .filter(e => e.splitType !== 'personal')
       .reduce((acc, curr) => acc + curr.amount, 0), 
-    [expenses]
+    [filteredExpenses]
   );
 
   const sortedExpenses = useMemo(() => {
-    return [...expenses].sort((a, b) => compareDesc(parseISO(a.date), parseISO(b.date)));
-  }, [expenses]);
+    return [...filteredExpenses].sort((a, b) => compareDesc(parseISO(a.date), parseISO(b.date)));
+  }, [filteredExpenses]);
 
   if (!mounted) return null;
 
+  // LANDING PAGE VIEW
+  if (!activeGroupId) {
+    return (
+      <div className="min-h-screen bg-background p-6 font-body">
+        <header className="mb-8 mt-4">
+          <h1 className="text-4xl font-black text-primary tracking-tight">I miei Conti</h1>
+          <p className="text-muted-foreground font-medium">Gestisci i tuoi viaggi e le spese di casa.</p>
+        </header>
+
+        <div className="grid grid-cols-1 gap-5 mb-24">
+          {groups.map((group) => {
+            const GroupIcon = AVAILABLE_ICONS[group.iconName as IconName] || Home;
+            const groupTotal = expenses
+              .filter(e => e.groupId === group.id && e.splitType !== 'personal')
+              .reduce((acc, curr) => acc + curr.amount, 0);
+
+            return (
+              <Card 
+                key={group.id} 
+                className="border-none shadow-xl rounded-[2.5rem] overflow-hidden group cursor-pointer active:scale-95 transition-all"
+                onClick={() => setActiveGroupId(group.id)}
+              >
+                <CardContent className="p-0">
+                  <div className="p-8 flex items-center justify-between" style={{ backgroundColor: group.color + '10' }}>
+                    <div className="flex items-center gap-5">
+                      <div className="w-16 h-16 rounded-[1.8rem] flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: group.color }}>
+                        <GroupIcon className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-black text-foreground mb-1">{group.name}</h2>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="bg-white/50 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border-none">
+                            €{groupTotal.toFixed(0)} TOT.
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="rounded-full bg-white/50">
+                      <PlusCircle className="w-6 h-6 text-primary" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          <Dialog open={isGroupDialogOpen} onOpenChange={setIsGroupDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-20 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 text-primary font-black text-lg gap-3 hover:bg-primary/10 transition-all">
+                <Plus className="w-6 h-6" /> CREA NUOVO CONTO
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-[2.5rem] p-8">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black text-primary">Nuovo Progetto</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 pt-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest">Nome (es. Viaggio Berlino)</Label>
+                  <Input value={newGroupName} className="rounded-2xl h-12" onChange={(e) => setNewGroupName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest">Scegli Icona</Label>
+                  <div className="grid grid-cols-5 gap-3 p-4 bg-secondary/30 rounded-3xl">
+                    {(['Plane', 'Home', 'Briefcase', 'Heart', 'Gamepad', 'Pizza', 'Car', 'Users'] as IconName[]).map((icon) => {
+                      const IconComp = AVAILABLE_ICONS[icon] || Briefcase;
+                      return (
+                        <Button
+                          key={icon}
+                          variant={newGroupIcon === icon ? 'default' : 'outline'}
+                          size="icon"
+                          onClick={() => setNewGroupIcon(icon)}
+                          className={`h-12 w-12 rounded-2xl transition-all ${newGroupIcon === icon ? 'bg-primary shadow-lg' : 'bg-white'}`}
+                        >
+                          <IconComp className="w-6 h-6" />
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest">Colore</Label>
+                  <div className="flex gap-3 flex-wrap p-4 bg-secondary/30 rounded-3xl">
+                    {['#2D6A4F', '#3B82F6', '#EF4444', '#F59E0B', '#8B5CF6', '#EC4899'].map(color => (
+                      <button
+                        key={color}
+                        className={`w-10 h-10 rounded-full border-4 transition-transform ${newGroupColor === color ? 'scale-110 border-white shadow-lg' : 'border-transparent'}`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => setNewGroupColor(color)}
+                      >
+                        {newGroupColor === color && <Check className="w-5 h-5 text-white mx-auto" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Button className="w-full h-14 rounded-3xl font-black text-lg shadow-xl" onClick={addGroup}>SALVA PROGETTO</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <Toaster />
+      </div>
+    );
+  }
+
+  // GROUP DETAIL VIEW
   return (
     <div className="min-h-screen bg-background pb-24 font-body">
       <header className="sticky top-0 z-50 w-full border-b bg-primary text-white shadow-md">
         <div className="container flex h-16 items-center justify-between px-6 max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-full">
-              <Users className="w-5 h-5" />
-            </div>
-            <h1 className="text-xl font-black tracking-tight">{groupName}</h1>
+            <Button variant="ghost" size="icon" onClick={() => setActiveGroupId(null)} className="text-white hover:bg-white/20 rounded-full">
+              <ChevronLeft className="w-6 h-6" />
+            </Button>
+            <h1 className="text-xl font-black tracking-tight truncate max-w-[150px]">{activeGroup?.name}</h1>
           </div>
           
           <Dialog open={isFormOpen} onOpenChange={(open) => {
@@ -237,7 +364,6 @@ export default function SpeseJournal() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           
           <TabsContent value="dashboard" className="space-y-6 m-0">
-            {/* Balance Card - Styled like "Saldo" in Monefy */}
             <Card className={`border-none shadow-2xl rounded-[2.5rem] overflow-hidden transition-colors duration-500 ${
               balances.diff === 0 ? 'bg-primary' : 
               balances.u2OwesU1 > 0 ? 'bg-[#386641]' : 'bg-[#bc4749]'
@@ -259,7 +385,7 @@ export default function SpeseJournal() {
                 <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 opacity-70" />
-                    <span className="text-xs font-bold uppercase tracking-wider opacity-70">Totale spese comuni</span>
+                    <span className="text-xs font-bold uppercase tracking-wider opacity-70">Spese comuni del gruppo</span>
                   </div>
                   <span className="text-2xl font-black">€{totalSharedSpent.toFixed(2)}</span>
                 </div>
@@ -320,10 +446,16 @@ export default function SpeseJournal() {
                               </div>
                               
                               <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary" onClick={() => startEdit(exp)}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary" onClick={() => {
+                                  setEditingExpense(exp);
+                                  setIsFormOpen(true);
+                                }}>
                                   <Edit2 className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive" onClick={() => deleteExpense(exp.id)}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive" onClick={() => {
+                                  setExpenses(prev => prev.filter(e => e.id !== exp.id));
+                                  toast({ title: "Spesa eliminata" });
+                                }}>
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
@@ -336,7 +468,7 @@ export default function SpeseJournal() {
                 ) : (
                   <div className="text-center py-24 text-muted-foreground bg-secondary/30 rounded-[3rem] border-2 border-dashed border-primary/10">
                     <Receipt className="w-16 h-16 opacity-10 mx-auto mb-6" />
-                    <p className="font-black uppercase tracking-widest text-xs opacity-50">Nessuna spesa nel registro</p>
+                    <p className="font-black uppercase tracking-widest text-xs opacity-50">Nessuna spesa in questo conto</p>
                   </div>
                 )}
               </div>
@@ -371,10 +503,6 @@ export default function SpeseJournal() {
                 <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-primary">Dati del Gruppo</CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nome del Gruppo</Label>
-                  <Input value={groupName} className="rounded-2xl h-12 border-muted" onChange={(e) => setGroupName(e.target.value)} />
-                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Partecipante 1</Label>
@@ -390,86 +518,20 @@ export default function SpeseJournal() {
 
             <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
               <CardHeader className="bg-primary/5 p-6 flex flex-row justify-between items-center">
-                <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-primary">Categorie</CardTitle>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="rounded-full h-8 gap-1 font-black uppercase text-[10px] tracking-widest hover:bg-primary/10 hover:text-primary">
-                      <PlusCircle className="w-4 h-4" /> Aggiungi
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="rounded-[2.5rem] p-8">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-black text-primary">Nuova Categoria</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-6 pt-4">
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest">Nome Categoria</Label>
-                        <Input value={newCatName} className="rounded-2xl h-12" onChange={(e) => setNewCatName(e.target.value)} placeholder="es. Animali" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest">Scegli Icona</Label>
-                        <div className="grid grid-cols-5 gap-3 max-h-48 overflow-y-auto p-4 bg-secondary/30 rounded-3xl border-2 border-muted">
-                          {Object.keys(AVAILABLE_ICONS).map((iconKey) => {
-                            const IconComp = AVAILABLE_ICONS[iconKey as IconName];
-                            return (
-                              <Button
-                                key={iconKey}
-                                variant={newCatIcon === iconKey ? 'default' : 'outline'}
-                                size="icon"
-                                onClick={() => setNewCatIcon(iconKey as IconName)}
-                                className={`h-12 w-12 rounded-2xl transition-all ${newCatIcon === iconKey ? 'bg-primary shadow-lg scale-110' : 'bg-white'}`}
-                              >
-                                <IconComp className="w-6 h-6" />
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest">Scegli Colore</Label>
-                        <div className="flex gap-3 flex-wrap p-4 bg-secondary/30 rounded-3xl">
-                          {['#2D6A4F', '#1B4332', '#F59E0B', '#EF4444', '#EC4899', '#8B5CF6', '#06B6D4', '#6B7280', '#000000', '#FF5733'].map(color => (
-                            <button
-                              key={color}
-                              className={`w-10 h-10 rounded-full border-4 transition-transform ${newCatColor === color ? 'scale-110 border-white shadow-lg' : 'border-transparent'}`}
-                              style={{ backgroundColor: color }}
-                              onClick={() => setNewCatColor(color)}
-                            >
-                              {newCatColor === color && <Check className="w-5 h-5 text-white mx-auto" />}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <Button className="w-full h-14 rounded-3xl font-black text-lg shadow-xl" onClick={addCategory}>SALVA CATEGORIA</Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-primary">Azioni Conto</CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-2 gap-3">
-                  {categories.map(cat => {
-                    const IconComp = AVAILABLE_ICONS[cat.iconName as IconName] || AVAILABLE_ICONS['Layers'];
-                    return (
-                      <div key={cat.id} className="flex items-center gap-3 p-3 bg-secondary/40 rounded-[1.5rem] border-2 border-transparent hover:border-primary/20 transition-all group">
-                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform" style={{ backgroundColor: cat.color }}>
-                          <IconComp className="w-5 h-5" />
-                        </div>
-                        <span className="text-[11px] font-black uppercase tracking-wider truncate">{cat.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+              <CardContent className="p-6 space-y-4">
+                <Button variant="outline" className="w-full justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]" onClick={() => toast({ title: "Link Copiato!" })}>
+                  <Share2 className="w-6 h-6 text-primary" /> Condividi Accesso
+                </Button>
+                <Button variant="outline" className="w-full justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]">
+                  <Download className="w-6 h-6 text-primary" /> Esporta (CSV)
+                </Button>
+                <Button variant="destructive" className="w-full justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]" onClick={() => deleteGroup(activeGroupId!)}>
+                  <Trash2 className="w-6 h-6" /> Elimina questo conto
+                </Button>
               </CardContent>
             </Card>
-            
-            <div className="grid grid-cols-1 gap-4">
-              <Button variant="outline" className="justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]" onClick={() => toast({ title: "Link Copiato!", description: "Invia questo link per invitare qualcuno." })}>
-                <Share2 className="w-6 h-6 text-primary" /> Condividi Accesso
-              </Button>
-              <Button variant="outline" className="justify-start gap-4 h-16 rounded-[2rem] border-none shadow-xl font-black uppercase text-[10px] tracking-[0.2em]">
-                <Download className="w-6 h-6 text-primary" /> Esporta tutto (CSV)
-              </Button>
-            </div>
           </TabsContent>
         </Tabs>
       </main>
